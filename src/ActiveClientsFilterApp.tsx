@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import "./index.css";
 
 export default function ActiveClientsFilterApp() {
@@ -9,18 +9,16 @@ export default function ActiveClientsFilterApp() {
   const [error, setError] = useState("");
   const [results, setResults] = useState<string[]>([]);
 
-  function parseLineToFields(line: string): string[] {
-    let parts = line.split("\t").map((p) => p.trim());
-    if (parts.length === 1) parts = line.split(/\s{2,}/g).map((p) => p.trim());
-    if (parts.length === 1) parts = line.split(/\s+/g).map((p) => p.trim());
+  const parseLineToFields = (line: string): string[] => {
+    let parts = line.split("\t").map(p => p.trim());
+    if (parts.length === 1) parts = line.split(/\s{2,}/g).map(p => p.trim());
+    if (parts.length === 1) parts = line.split(/\s+/g).map(p => p.trim());
     return parts.filter(Boolean);
-  }
+  };
 
-  function prettifySource(src: string): string {
-    return src.replace(/\s*TG$/i, "").trim();
-  }
+  const prettifySource = (src: string): string => src.replace(/\s*TG$/i, "").trim();
 
-  function formatRow(parts: string[]): string | null {
+  const formatRow = (parts: string[]): string | null => {
     if (parts.length < 6) return null;
     const name = parts[0]?.trim();
     const age = parts[1]?.trim();
@@ -29,48 +27,40 @@ export default function ActiveClientsFilterApp() {
     const city = parts[5]?.trim();
     if (!name || !age || !city || !source || !date) return null;
     return `${name} ${age} ${city} ${source} ${date}`;
-  }
+  };
 
-  function filterActive(text: string): string[] {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const activeLines = lines.filter(l => l.includes(keyword));
-    const formatted: string[] = [];
-    for (const line of activeLines) {
-      const parts = parseLineToFields(line);
-      const fmt = formatRow(parts);
-      if (fmt) formatted.push(fmt);
-    }
-    return formatted;
-  }
+  const filterActive = (text: string): string[] => {
+    return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).filter(l => l.includes(keyword)).map(line => {
+      const fmt = formatRow(parseLineToFields(line));
+      return fmt || '';
+    }).filter(Boolean);
+  };
 
-  async function handleFetch() {
+  const handleFetch = async () => {
     setError("");
     setLoading(true);
     setResults([]);
     try {
-      if (!url) throw new Error("Link to file");
+      if (!url) throw new Error("Введи ссылку на текстовый файл.");
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status} — can't upload file`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} — не удалось загрузить файл`);
       const text = await res.text();
       setResults(filterActive(text));
     } catch (e: any) {
-      setError(e?.message || "Upload error");
+      setError(e?.message || "Ошибка загрузки/разбора");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  function handleFromRaw() {
+  const handleFromRaw = () => {
     setError("");
     setResults(filterActive(rawText));
-  }
+  };
 
-  function handleCopy() {
-    if (!results.length) return;
-    navigator.clipboard.writeText(results.join("\n"));
-  }
+  const handleCopy = () => results.length && navigator.clipboard.writeText(results.join("\n"));
 
-  function handleDownload() {
+  const handleDownload = () => {
     const blob = new Blob([results.join("\n")], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -78,32 +68,29 @@ export default function ActiveClientsFilterApp() {
     a.download = "active_clients.txt";
     a.click();
     URL.revokeObjectURL(url);
-  }
+  };
 
   const hasResults = results.length > 0;
 
   return (
     <div className="container">
-      <h1>Client Filter</h1>
-      <p>Add txt file to filter clients</p>
+      <h1>Фильтр клиентов по статусу «Актив»</h1>
+      <p>Вставь ссылку на текстовый файл или текст ниже и нажми фильтр.</p>
       <div className="input-group">
         <input placeholder="https://.../clients.txt" value={url} onChange={e => setUrl(e.target.value)} />
-        <button onClick={handleFetch} disabled={loading}>{loading ? "Loading..." : "Upload and filter"}</button>
+        <button onClick={handleFetch} disabled={loading}>{loading ? "Загрузка..." : "Загрузить и отфильтровать"}</button>
       </div>
       <div className="input-group">
-        <textarea placeholder="Clients list..." value={rawText} onChange={e => setRawText(e.target.value)} />
-        <button onClick={handleFromRaw}>Filter clients</button>
+        <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="Ключевое слово" />
+        <textarea placeholder="Вставь текст" value={rawText} onChange={e => setRawText(e.target.value)} />
+        <button onClick={handleFromRaw}>Отфильтровать текст</button>
       </div>
       {error && <div className="error">{error}</div>}
       <div className="results">
-        {hasResults ? (
-          <ul>{results.map((r,i) => <li key={i}>{r}</li>)}</ul>
-        ) : (
-          <p>Empty, add list of clients...</p>
-        )}
+        {hasResults ? <ul>{results.map((r,i) => <li key={i}>{r}</li>)}</ul> : <p>Пусто — загрузи файл или вставь текст.</p>}
         <div className="actions">
-          <button onClick={handleCopy} disabled={!hasResults}>Copy</button>
-          <button onClick={handleDownload} disabled={!hasResults}>Download .txt</button>
+          <button onClick={handleCopy} disabled={!hasResults}>Копировать</button>
+          <button onClick={handleDownload} disabled={!hasResults}>Скачать .txt</button>
         </div>
       </div>
     </div>
