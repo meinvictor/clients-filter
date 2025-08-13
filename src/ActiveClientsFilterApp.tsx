@@ -1,10 +1,11 @@
+// src/ActiveClientsFilterApp.tsx
 import { useState } from "react";
 import "./index.css";
 
 export default function ActiveClientsFilterApp() {
   const [url, setUrl] = useState("");
   const [rawText, setRawText] = useState("");
-  const [keyword, setKeyword] = useState("Актив");
+  const [keyword, setKeyword] = useState("Актив"); // використовується в фільтрі
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<string[]>([]);
@@ -16,25 +17,24 @@ export default function ActiveClientsFilterApp() {
     return parts.filter(Boolean);
   };
 
-  const prettifySource = (src: string): string => src.replace(/\s*TG$/i, "").trim();
+  const prettifySource = (src: string) => src.replace(/\s*TG$/i, "").trim();
 
   const formatRow = (parts: string[]): string | null => {
     if (parts.length < 6) return null;
-    const name = parts[0]?.trim();
-    const age = parts[1]?.trim();
-    const source = prettifySource(parts[2] || "");
-    const date = parts[4]?.trim();
-    const city = parts[5]?.trim();
+    const [name, age, sourceRaw, , date, city] = parts;
+    const source = prettifySource(sourceRaw);
     if (!name || !age || !city || !source || !date) return null;
     return `${name} ${age} ${city} ${source} ${date}`;
   };
 
-  const filterActive = (text: string): string[] => {
-    return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).filter(l => l.includes(keyword)).map(line => {
-      const fmt = formatRow(parseLineToFields(line));
-      return fmt || '';
-    }).filter(Boolean);
-  };
+  const filterActive = (text: string) =>
+    text
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(Boolean)
+      .filter(l => l.includes(keyword))
+      .map(line => formatRow(parseLineToFields(line)))
+      .filter(Boolean) as string[];
 
   const handleFetch = async () => {
     setError("");
@@ -76,16 +76,20 @@ export default function ActiveClientsFilterApp() {
     <div className="container">
       <h1>Фильтр клиентов по статусу «Актив»</h1>
       <p>Вставь ссылку на текстовый файл или текст ниже и нажми фильтр.</p>
+
       <div className="input-group">
         <input placeholder="https://.../clients.txt" value={url} onChange={e => setUrl(e.target.value)} />
         <button onClick={handleFetch} disabled={loading}>{loading ? "Загрузка..." : "Загрузить и отфильтровать"}</button>
       </div>
+
       <div className="input-group">
         <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="Ключевое слово" />
         <textarea placeholder="Вставь текст" value={rawText} onChange={e => setRawText(e.target.value)} />
         <button onClick={handleFromRaw}>Отфильтровать текст</button>
       </div>
+
       {error && <div className="error">{error}</div>}
+
       <div className="results">
         {hasResults ? <ul>{results.map((r,i) => <li key={i}>{r}</li>)}</ul> : <p>Пусто — загрузи файл или вставь текст.</p>}
         <div className="actions">
